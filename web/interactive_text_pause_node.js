@@ -8,6 +8,20 @@ link.type = "text/css";
 link.href = "extensions/interactive_text_pause_node/interactive_text_pause_node.css";
 document.head.appendChild(link);
 
+// 加载外部库
+const highlightCss = document.createElement("link");
+highlightCss.rel = "stylesheet";
+highlightCss.href = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css";
+document.head.appendChild(highlightCss);
+
+const highlightJs = document.createElement("script");
+highlightJs.src = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js";
+document.head.appendChild(highlightJs);
+
+const markedJs = document.createElement("script");
+markedJs.src = "https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js";
+document.head.appendChild(markedJs);
+
 app.registerExtension({
     name: "InteractiveTextPauseNode",
     
@@ -117,18 +131,65 @@ function showTextEditor(sessionId, initialText, nodeId, seed = 0, isPreExecution
     editOverlay = document.createElement('div');
     editOverlay.className = 'interactive-text-overlay';
     editOverlay.innerHTML = `
-        <div class="interactive-text-modal">
+        <div class="interactive-text-modal enhanced">
             <div class="interactive-text-header">
-                <h3>📝 交互式文本编辑器 ${isPreExecution ? '(预编辑模式)' : ''}</h3>
+                <h3>📝 智能文本编辑器 ${isPreExecution ? '(预编辑模式)' : ''}</h3>
                 <p>${isPreExecution ? '队列执行前预编辑 - 修改文本后将直接用于工作流执行' : '修改文本后点击"确认"继续ComfyUI工作流程'}</p>
+                <div class="editor-controls">
+                    <select id="text-format" class="format-select">
+                        <option value="text">纯文本</option>
+                        <option value="markdown">Markdown</option>
+                        <option value="json">JSON</option>
+                        <option value="xml">XML</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="python">Python</option>
+                        <option value="css">CSS</option>
+                        <option value="html">HTML</option>
+                    </select>
+                    <button id="preview-toggle" class="preview-btn">👁️ 预览</button>
+                    <button id="stats-toggle" class="stats-btn">📊 统计</button>
+                </div>
             </div>
             
             <div class="interactive-text-content">
-                <textarea 
-                    id="interactive-text-input" 
-                    class="interactive-text-textarea"
-                    placeholder="在此编辑您的文本..."
-                >${initialText}</textarea>
+                <div class="editor-wrapper">
+                    <textarea 
+                        id="interactive-text-input" 
+                        class="interactive-text-textarea"
+                        placeholder="在此编辑您的文本..."
+                    >${initialText}</textarea>
+                    <div id="text-preview" class="text-preview hidden">
+                        <div class="preview-content"></div>
+                    </div>
+                </div>
+                <div id="text-stats" class="text-stats hidden">
+                    <div class="stats-content">
+                        <div class="stat-item">
+                            <span class="stat-label">字符数:</span>
+                            <span id="char-count">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">单词数:</span>
+                            <span id="word-count">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">行数:</span>
+                            <span id="line-count">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">段落数:</span>
+                            <span id="paragraph-count">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">语言:</span>
+                            <span id="detected-language">检测中...</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">阅读时间:</span>
+                            <span id="reading-time">0分钟</span>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <div class="interactive-text-actions">
@@ -158,9 +219,26 @@ function showTextEditor(sessionId, initialText, nodeId, seed = 0, isPreExecution
     const cancelBtn = document.getElementById('interactive-text-cancel');
     const resetBtn = document.getElementById('interactive-text-reset');
     const statusSpan = document.getElementById('interactive-text-status');
+    const formatSelect = document.getElementById('text-format');
+    const previewToggle = document.getElementById('preview-toggle');
+    const statsToggle = document.getElementById('stats-toggle');
+    const textPreview = document.getElementById('text-preview');
+    const textStats = document.getElementById('text-stats');
     
     textarea.focus();
     textarea.select();
+    
+    // 等待库加载完成
+    let librariesLoaded = false;
+    const checkLibraries = () => {
+        if (window.hljs && window.marked) {
+            librariesLoaded = true;
+            window.hljs.highlightAll();
+        } else {
+            setTimeout(checkLibraries, 100);
+        }
+    };
+    checkLibraries();
     
     function updateStatus() {
         const text = textarea.value;
@@ -169,7 +247,333 @@ function showTextEditor(sessionId, initialText, nodeId, seed = 0, isPreExecution
         statusSpan.textContent = `字符数: ${charCount} | 行数: ${lineCount} | 种子: ${seed} | 会话ID: ${sessionId.slice(0, 8)}...`;
     }
     
-    textarea.addEventListener('input', updateStatus);
+    function updateTextStats() {
+        const text = textarea.value;
+        const charCount = text.length;
+        const wordCount = text.trim().split(/\s+/).filter(word => word.length > 0).length;
+        const lineCount = text.split('\n').length;
+        const paragraphCount = text.split('\n\n').filter(p => p.trim().length > 0).length;
+        const readingTime = Math.ceil(wordCount / 200); // 假设每分钟200词
+        
+        document.getElementById('char-count').textContent = charCount;
+        document.getElementById('word-count').textContent = wordCount;
+        document.getElementById('line-count').textContent = lineCount;
+        document.getElementById('paragraph-count').textContent = paragraphCount;
+        document.getElementById('reading-time').textContent = readingTime + '分钟';
+        
+        // 简单语言检测
+        detectLanguage(text);
+    }
+    
+    function detectLanguage(text) {
+        const langSpan = document.getElementById('detected-language');
+        if (!text.trim()) {
+            langSpan.textContent = '无内容';
+            return;
+        }
+        
+        // 简单的语言检测逻辑
+        const chineseChars = (text.match(/[\u4e00-\u9fff]/g) || []).length;
+        const englishWords = (text.match(/[a-zA-Z]+/g) || []).length;
+        const japaneseChars = (text.match(/[\u3040-\u309f\u30a0-\u30ff]/g) || []).length;
+        
+        if (chineseChars > englishWords && chineseChars > japaneseChars) {
+            langSpan.textContent = '中文';
+        } else if (englishWords > chineseChars && englishWords > japaneseChars) {
+            langSpan.textContent = '英文';
+        } else if (japaneseChars > 0) {
+            langSpan.textContent = '日文';
+        } else {
+            langSpan.textContent = '混合/其他';
+        }
+    }
+    
+    function updatePreview() {
+        if (!librariesLoaded) return;
+        
+        const format = formatSelect.value;
+        const text = textarea.value;
+        const previewContent = textPreview.querySelector('.preview-content');
+        
+        try {
+            switch (format) {
+                case 'markdown':
+                    if (!text.trim()) {
+                        previewContent.innerHTML = '<div class="preview-hint">💡 请输入Markdown文本进行预览</div>';
+                        break;
+                    }
+                    previewContent.innerHTML = window.marked.parse(text);
+                    break;
+                case 'json':
+                    if (!text.trim()) {
+                        previewContent.innerHTML = '<div class="preview-hint">💡 请输入JSON文本进行预览</div>';
+                        break;
+                    }
+                    
+                    // 检查是否看起来像JSON
+                    const trimmed = text.trim();
+                    if (!trimmed.startsWith('{') && !trimmed.startsWith('[') && !trimmed.startsWith('"') && !(/^(true|false|null|\d+)$/.test(trimmed))) {
+                        previewContent.innerHTML = `
+                            <div class="json-error">
+                                <div class="error-icon">⚠️</div>
+                                <div class="error-title">这不是有效的JSON格式</div>
+                                <div class="error-desc">JSON格式应该是：</div>
+                                <div class="error-examples">
+                                    <div>• 对象: <code>{"key": "value"}</code></div>
+                                    <div>• 数组: <code>["item1", "item2"]</code></div>
+                                    <div>• 字符串: <code>"text"</code></div>
+                                    <div>• 数字: <code>123</code></div>
+                                    <div>• 布尔值: <code>true</code> 或 <code>false</code></div>
+                                </div>
+                                <div class="error-suggestion">
+                                    💡 建议：如果是普通文本，请选择"纯文本"格式
+                                </div>
+                            </div>
+                        `;
+                        break;
+                    }
+                    
+                    const formatted = JSON.stringify(JSON.parse(text), null, 2);
+                    previewContent.innerHTML = `<pre><code class="language-json">${formatted}</code></pre>`;
+                    window.hljs.highlightAll();
+                    break;
+                case 'xml':
+                case 'html':
+                case 'javascript':
+                case 'python':
+                case 'css':
+                    if (!text.trim()) {
+                        previewContent.innerHTML = `<div class="preview-hint">💡 请输入${format.toUpperCase()}代码进行预览</div>`;
+                        break;
+                    }
+                    previewContent.innerHTML = `<pre><code class="language-${format}">${text}</code></pre>`;
+                    window.hljs.highlightAll();
+                    break;
+                default:
+                    previewContent.innerHTML = `<pre>${text}</pre>`;
+            }
+        } catch (e) {
+            if (format === 'json') {
+                previewContent.innerHTML = `
+                    <div class="json-error">
+                        <div class="error-icon">❌</div>
+                        <div class="error-title">JSON解析错误</div>
+                        <div class="error-desc">${e.message}</div>
+                        <div class="error-suggestion">
+                            💡 请检查JSON格式是否正确：
+                            <br>• 字符串需要用双引号包围
+                            <br>• 对象键名需要用双引号
+                            <br>• 不要有多余的逗号
+                        </div>
+                    </div>
+                `;
+            } else {
+                previewContent.innerHTML = `<div class="preview-error">⚠️ 预览错误: ${e.message}</div>`;
+            }
+        }
+    }
+    
+    // 事件监听
+    textarea.addEventListener('input', () => {
+        updateStatus();
+        updateTextStats();
+        if (!textPreview.classList.contains('hidden')) {
+            updatePreview();
+        }
+    });
+    
+    // 自动格式检测（粘贴时）
+    textarea.addEventListener('paste', () => {
+        setTimeout(() => {
+            const text = textarea.value.trim();
+            if (text && formatSelect.value === 'text') {
+                const detectedFormat = detectTextFormat(text);
+                if (detectedFormat !== 'text') {
+                    showAutoFormatSuggestion(detectedFormat);
+                }
+            }
+        }, 100);
+    });
+    
+    function showAutoFormatSuggestion(detectedFormat) {
+        const formatNames = {
+            'markdown': 'Markdown',
+            'json': 'JSON',
+            'html': 'HTML',
+            'xml': 'XML',
+            'css': 'CSS',
+            'javascript': 'JavaScript',
+            'python': 'Python'
+        };
+        
+        // 移除已存在的建议
+        const existing = document.querySelector('.format-suggestion');
+        if (existing) existing.remove();
+        
+        const suggestion = document.createElement('div');
+        suggestion.className = 'format-suggestion auto-detect';
+        suggestion.innerHTML = `
+            <span>🔍 检测到 <strong>${formatNames[detectedFormat]}</strong> 格式，是否切换？</span>
+            <button class="suggestion-btn accept">切换</button>
+            <button class="suggestion-btn dismiss">保持纯文本</button>
+        `;
+        
+        formatSelect.parentNode.appendChild(suggestion);
+        
+        suggestion.querySelector('.accept').addEventListener('click', () => {
+            formatSelect.value = detectedFormat;
+            updatePreview();
+            suggestion.remove();
+        });
+        
+        suggestion.querySelector('.dismiss').addEventListener('click', () => {
+            suggestion.remove();
+        });
+        
+        // 8秒后自动消失
+        setTimeout(() => {
+            if (suggestion.parentNode) {
+                suggestion.remove();
+            }
+        }, 8000);
+    }
+    
+    formatSelect.addEventListener('change', () => {
+        if (!textPreview.classList.contains('hidden')) {
+            updatePreview();
+        }
+        
+        // 智能格式提示
+        const selectedFormat = formatSelect.value;
+        const text = textarea.value.trim();
+        
+        if (text && selectedFormat !== 'text') {
+            setTimeout(() => {
+                suggestBetterFormat(text, selectedFormat);
+            }, 100);
+        }
+    });
+    
+    function suggestBetterFormat(text, currentFormat) {
+        const detectedFormat = detectTextFormat(text);
+        
+        if (detectedFormat && detectedFormat !== currentFormat && detectedFormat !== 'text') {
+            showFormatSuggestion(detectedFormat, currentFormat);
+        }
+    }
+    
+    function detectTextFormat(text) {
+        // 检测Markdown
+        if (/^#+\s|^\*\s|^\d+\.\s|^>\s|```|^-{3,}|^\[.*\]\(.*\)/m.test(text)) {
+            return 'markdown';
+        }
+        
+        // 检测JSON
+        const trimmed = text.trim();
+        if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || 
+            (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+            try {
+                JSON.parse(text);
+                return 'json';
+            } catch (e) {}
+        }
+        
+        // 检测HTML
+        if (/<[^>]+>/g.test(text) && /<\/[^>]+>/g.test(text)) {
+            return 'html';
+        }
+        
+        // 检测XML
+        if (/<\?xml|<[^>]+xmlns/g.test(text)) {
+            return 'xml';
+        }
+        
+        // 检测CSS
+        if (/[.#][a-zA-Z-_][^{]*\{[^}]*\}/g.test(text)) {
+            return 'css';
+        }
+        
+        // 检测JavaScript
+        if (/\b(function|const|let|var|class|import|export)\b/g.test(text)) {
+            return 'javascript';
+        }
+        
+        // 检测Python
+        if (/\b(def|class|import|from|if __name__|print\()\b/g.test(text)) {
+            return 'python';
+        }
+        
+        return 'text';
+    }
+    
+    function showFormatSuggestion(suggested, current) {
+        // 移除已存在的建议
+        const existing = document.querySelector('.format-suggestion');
+        if (existing) existing.remove();
+        
+        const formatNames = {
+            'markdown': 'Markdown',
+            'json': 'JSON',
+            'html': 'HTML',
+            'xml': 'XML',
+            'css': 'CSS',
+            'javascript': 'JavaScript',
+            'python': 'Python'
+        };
+        
+        // 创建临时提示
+        const suggestion = document.createElement('div');
+        suggestion.className = 'format-suggestion';
+        suggestion.innerHTML = `
+            <span>💡 建议切换为 <strong>${formatNames[suggested]}</strong> 格式</span>
+            <button class="suggestion-btn accept">切换</button>
+            <button class="suggestion-btn dismiss">×</button>
+        `;
+        
+        // 插入到格式选择器旁边
+        formatSelect.parentNode.appendChild(suggestion);
+        
+        // 事件监听
+        suggestion.querySelector('.accept').addEventListener('click', () => {
+            formatSelect.value = suggested;
+            updatePreview();
+            suggestion.remove();
+        });
+        
+        suggestion.querySelector('.dismiss').addEventListener('click', () => {
+            suggestion.remove();
+        });
+        
+        // 5秒后自动消失
+        setTimeout(() => {
+            if (suggestion.parentNode) {
+                suggestion.remove();
+            }
+        }, 5000);
+    }
+    
+    previewToggle.addEventListener('click', () => {
+        textPreview.classList.toggle('hidden');
+        if (!textPreview.classList.contains('hidden')) {
+            updatePreview();
+            previewToggle.textContent = '📝 编辑';
+        } else {
+            previewToggle.textContent = '👁️ 预览';
+        }
+    });
+    
+    statsToggle.addEventListener('click', () => {
+        textStats.classList.toggle('hidden');
+        if (!textStats.classList.contains('hidden')) {
+            updateTextStats();
+            statsToggle.textContent = '❌ 关闭';
+        } else {
+            statsToggle.textContent = '📊 统计';
+        }
+    });
+    
+    // 初始化统计
+    updateTextStats();
     
     confirmBtn.addEventListener('click', () => {
         confirmTextEdit(sessionId, textarea.value, isPreExecution, nodeId);

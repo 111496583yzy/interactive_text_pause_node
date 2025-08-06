@@ -9,13 +9,19 @@ A powerful ComfyUI custom node that allows interactive text editing in workflows
 - **Runtime Mode**: Traditional pause-and-edit during workflow execution
 - **Automatic Detection**: Intelligently chooses the best mode based on input type
 
-### 💫 **Advanced Editing**
-- ✏️ **Rich Text Editor**: Beautiful interface based on ComfyUI showtext styling
+### 💫 **Enhanced Text Editing**
+- ✏️ **Rich Text Editor**: Beautiful interface with professional styling
+- ✨ **Syntax Highlighting**: Support for Markdown, JSON, XML, JavaScript, Python, CSS, HTML
+- 👁️ **Real-time Preview**: Live rendering of Markdown, JSON formatting, and code highlighting
+- 🔍 **Smart Format Detection**: Auto-detect content format and suggest appropriate formatting
+- 📊 **Advanced Text Analytics**:
+  - Character count, word count, line count, paragraph count
+  - Language detection (Chinese, English, Japanese, mixed)
+  - Reading time estimation (based on 200 words/minute)
 - 🎨 **Modern Dark UI**: Responsive design supporting multiple screen sizes
 - ⌨️ **Keyboard Shortcuts**: 
   - `Ctrl+Enter` - Confirm changes
   - `Esc` - Cancel changes
-- 📊 **Real-time Stats**: Character count, line count, and session tracking
 - 🔄 **Reset Function**: One-click restore to original text
 
 ### 🛠️ **Smart Features**
@@ -81,12 +87,27 @@ When text comes from connected nodes:
 4. Click `✅ Confirm` to continue
 5. Remaining workflow completes
 
-### 4. Editor Interface
-- **Text Area**: Multi-line text editor with syntax highlighting
+### 4. Enhanced Editor Interface
+
+#### Main Controls
+- **Format Selector**: Choose from 8 different text formats (Plain Text, Markdown, JSON, XML, JavaScript, Python, CSS, HTML)
+- **👁️ Preview Button**: Toggle between editing and preview modes
+- **📊 Statistics Button**: Show/hide detailed text analytics panel
+
+#### Text Editing Area
+- **Smart Text Editor**: Multi-line editor with format-specific syntax highlighting
+- **Live Preview Panel**: Real-time rendering of formatted content (Markdown, JSON, code)
+- **Auto Format Detection**: Smart suggestions when pasting different content types
+
+#### Action Buttons
 - **✅ Confirm**: Apply changes and continue workflow
 - **❌ Cancel**: Discard changes, use original text  
 - **🔄 Reset**: Restore original text content
-- **Status Bar**: Shows character count, line count, seed value, and session ID
+
+#### Information Panels
+- **Status Bar**: Character count, line count, seed value, and session ID
+- **Statistics Panel**: Detailed metrics including word count, paragraphs, language detection, and reading time
+- **Smart Suggestions**: Format recommendations based on content analysis
 
 ## ⌨️ Keyboard Shortcuts
 
@@ -118,6 +139,38 @@ AI Text Generator → Interactive Editor → Final Output
 ```
 Text List → Loop → Interactive Editor → Processed Results
 ```
+
+**JSON Data Processing:**
+```
+API Response → Interactive Editor (JSON format) → Formatted Output
+```
+
+**Markdown Documentation:**
+```
+Draft Text → Interactive Editor (Markdown format) → HTML Preview → Final Document
+```
+
+### 🎯 Format-Specific Usage Tips
+
+#### 📝 **Markdown Editing**
+- Paste Markdown content and select "Markdown" format for live preview
+- See rendered headers, lists, links, and code blocks in real-time
+- Perfect for documentation and content creation
+
+#### 🔧 **JSON Processing** 
+- Automatic format validation and beautification
+- Clear error messages when JSON is invalid
+- Auto-suggest JSON format when pasting object/array data
+
+#### 💻 **Code Editing**
+- Syntax highlighting for JavaScript, Python, CSS, HTML
+- Format detection suggests appropriate language
+- Ideal for prompt engineering and code generation workflows
+
+#### 📊 **Text Analytics**
+- View detailed statistics: character/word/line counts
+- Language detection for multilingual content
+- Reading time estimation for content planning
 
 ## 🐛 Troubleshooting
 
@@ -154,11 +207,25 @@ A: Try:
 
 ## 🔮 Roadmap
 
-- [ ] Multi-language text editing support
-- [ ] Text formatting tools (Markdown, JSON, etc.)  
-- [ ] Text validation and linting
-- [ ] Collaborative editing features
-- [ ] Plugin API for custom text processors
+### ✅ Recently Implemented
+- [x] **Syntax Highlighting**: Support for Markdown, JSON, XML, JavaScript, Python, CSS, HTML
+- [x] **Real-time Preview**: Live rendering of formatted content  
+- [x] **Advanced Text Analytics**: Word count, language detection, reading time estimation
+- [x] **Smart Format Detection**: Auto-detect content format and suggest switching
+- [x] **Enhanced Error Handling**: User-friendly error messages with formatting tips
+
+### 🚧 In Development
+- [ ] **AI-Powered Text Enhancement**: GPT integration for content improvement
+- [ ] **Text Template System**: Pre-defined templates for common use cases
+- [ ] **Edit History**: Undo/redo functionality with change tracking
+- [ ] **Theme Customization**: Multiple editor themes and color schemes
+
+### 🌟 Future Features
+- [ ] **Collaborative Editing**: Real-time multi-user editing
+- [ ] **Plugin API**: Custom text processors and extensions
+- [ ] **Advanced Validation**: Schema validation for JSON/XML
+- [ ] **Export/Import**: Save/load text templates and presets
+- [ ] **Custom Shortcuts**: User-defined keyboard shortcuts
 
 ## 📄 License
 
